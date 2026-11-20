@@ -103,6 +103,7 @@ class InputManager:
 
         The dead zones apply to the movement and camera sticks.
         """
+        self.gym_controls = False
         self._is_key_down = is_key_down
         self._controller_manager = controller_manager
         self._controller: _Controller | None = None
@@ -172,11 +173,13 @@ class InputManager:
         else:
             movement = controller_movement
 
-        sprint = self.is_key_down("shift") or self.is_key_down("space")
+        sprint = self.is_key_down("shift")
+        if not self.gym_controls:
+            sprint = (sprint or self.is_key_down("space")) and not self.is_key_down("ctrl")
         return InputFrame(
             movement=movement,
             camera_orbit=self._controller_camera_orbit(),
-            use_max_speed=controller_movement != _ZERO_AXES or (sprint and not self.is_key_down("ctrl")),
+            use_max_speed=controller_movement != _ZERO_AXES or sprint,
         )
 
     def close(self) -> None:

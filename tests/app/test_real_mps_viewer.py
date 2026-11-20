@@ -128,7 +128,7 @@ class RealMetalViewerTests(unittest.TestCase):
             viewer, _ = newton.examples.init(create_gl_parser())
             scene = None
             try:
-                scene = ScenePreview(viewer, scene_dir / "g1_gym.scene.json")
+                scene = ScenePreview(viewer, scene_dir / "g1_gym.scene.json", reference=True)
                 for index, name in enumerate(("g1_gym.scene.json", "soma_gym.scene.json")):
                     if index:
                         scene.load_scene(scene_dir / name)

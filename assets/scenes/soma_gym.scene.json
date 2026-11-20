@@ -314,6 +314,204 @@
         0.5928571224212646,
         0.699999988079071
       ]
+    },
+    {
+      "id": 14,
+      "name": "West ramp",
+      "parent_id": null,
+      "transform": {
+        "translation": [
+          -4.98275912686602,
+          0,
+          0.5425304228867309
+        ],
+        "rotation_xyzw": [
+          0,
+          -0.14521314468540478,
+          0,
+          0.9894003954974829
+        ]
+      },
+      "euler_degrees": [
+        0,
+        -16.69924423399362,
+        0
+      ],
+      "dimensions": {
+        "width": 4.17612260356422,
+        "depth": 2.4,
+        "height": 0.12
+      },
+      "color": [
+        0.18,
+        0.56,
+        0.52
+      ]
+    },
+    {
+      "id": 15,
+      "name": "East ramp",
+      "parent_id": null,
+      "transform": {
+        "translation": [
+          0.9827591268660193,
+          0,
+          0.5425304228867309
+        ],
+        "rotation_xyzw": [
+          0,
+          0.14521314468540478,
+          0,
+          0.9894003954974829
+        ]
+      },
+      "euler_degrees": [
+        0,
+        16.69924423399362,
+        0
+      ],
+      "dimensions": {
+        "width": 4.17612260356422,
+        "depth": 2.4,
+        "height": 0.12
+      },
+      "color": [
+        0.18,
+        0.56,
+        0.52
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Bridge deck",
+      "parent_id": null,
+      "transform": {
+        "translation": [
+          -2,
+          0,
+          0.6
+        ],
+        "rotation_xyzw": [
+          0,
+          0.0,
+          0,
+          1.0
+        ]
+      },
+      "euler_degrees": [
+        0,
+        0,
+        0
+      ],
+      "dimensions": {
+        "width": 2,
+        "depth": 2.4,
+        "height": 1.2
+      },
+      "color": [
+        0.24,
+        0.65,
+        0.59
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Low hurdle",
+      "parent_id": null,
+      "transform": {
+        "translation": [
+          -3,
+          7,
+          0.18
+        ],
+        "rotation_xyzw": [
+          0,
+          0.0,
+          0,
+          1.0
+        ]
+      },
+      "euler_degrees": [
+        0,
+        0,
+        0
+      ],
+      "dimensions": {
+        "width": 0.25,
+        "depth": 2,
+        "height": 0.36
+      },
+      "color": [
+        0.9,
+        0.45,
+        0.16
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Landing block",
+      "parent_id": null,
+      "transform": {
+        "translation": [
+          -1,
+          10,
+          0.23
+        ],
+        "rotation_xyzw": [
+          0,
+          0.0,
+          0,
+          1.0
+        ]
+      },
+      "euler_degrees": [
+        0,
+        0,
+        0
+      ],
+      "dimensions": {
+        "width": 1.7,
+        "depth": 1.7,
+        "height": 0.46
+      },
+      "color": [
+        0.36,
+        0.55,
+        0.86
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Relay baton",
+      "parent_id": null,
+      "transform": {
+        "translation": [
+          -7.15,
+          4,
+          0.145
+        ],
+        "rotation_xyzw": [
+          0,
+          0.0,
+          0,
+          1.0
+        ]
+      },
+      "euler_degrees": [
+        0,
+        0,
+        0
+      ],
+      "dimensions": {
+        "width": 0.045,
+        "depth": 0.05,
+        "height": 0.29
+      },
+      "color": [
+        1,
+        0.36,
+        0.06
+      ]
     }
   ]
 }

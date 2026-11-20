@@ -17,6 +17,30 @@ This page shows how to run the app, then explains its runtime for developers who
 
 [Part 4 of the guided tutorial](guided_tutorial.md#part-4-play-the-scene) plays the interaction scene that the tutorial builds. The sections below connect what you see there to the code.
 
+## SOMA game controls
+
+The bundled SOMA gym uses a kinematic player controller. WASD and the arrows move, **Shift** runs, and **Control** crouches. Hold both modifiers for fast crouched movement under the blue overhead block. Releasing Control there stands the character up once there is headroom.
+
+**Space** starts a jump. Tap for a short hop or hold for a higher arc. In reach of the yellow wall or green box, Space starts the authored vault. At the purple seat, Space sits. Approaching either obstacle without pressing Space stops the character at its surface. A fresh movement input or another Space press stands the character up. A held key produces one action. A press just before landing can queue the next jump.
+
+Near spawn, press **E** to pick up the orange baton and press it again to drop it. The baton follows the right hand through walking, sprinting, crouching, jumping, vaulting and sitting. The teal bridge has two walkable slopes joined by a 1.2 m deck. The orange hurdle and blue landing block provide free-jump targets.
+
+Ordinary travel uses strides sampled from the SOMA locomotion assets. The controller resolves acceleration, collisions, jump height and ground support independently of those strides. A two-bone leg solver adjusts foot poses on the ramps. MotionBricks generates the authored vault and seating sequences from the character’s recorded poses. The baton is attached to the hand, and the controller does not simulate its mass.
+
+### Recorded input and response
+
+The [native replay tool](../tools/gym_replay.py) accepts `--record FILE` for a new keyboard recording, `--seconds N` for the capture length, or `--replay FILE` for playback. Add `--csv FILE` for frame-by-frame position, velocity, locomotion mode, interaction, carrying state and step/render time. Use `--reference` to compare the original generator or `--acceleration N` to tune horizontal acceleration in m/s². Recordings use a fixed simulation step and initial camera direction. They capture keyboard events, including brief Space taps. Mouse orbit and controller inputs are outside this recording format.
+
+On the M4, [the reversal recording](../tests/replays/soma_reversals.json) switches direction ten times, every 0.4 seconds, while Shift and Control are held. The original controller reached 0.5 m/s in the requested direction during one interval. The game controller reached that threshold within two 30 Hz samples on all ten. Increasing acceleration from 65 to 110 m/s² increased net travel per interval from 0.82 to 0.91 m. These measurements use simulation time and the character’s world position.
+
+![Signed velocity and displacement through ten reversals](media/gym_reversal_response.png)
+
+[Measured samples](media/gym_reversal_response.csv) · [Keyboard recordings for the obstacles and carry routes](../tests/replays)
+
+## Reference demonstration
+
+Pass `--reference` to use the original generated locomotion in the bundled SOMA gym. The rest of this guide describes those controls, which also apply to other scene documents.
+
 ## Run Scene Preview
 
 ```sh

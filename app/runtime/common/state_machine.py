@@ -38,6 +38,8 @@ class StateMachine:
     state before it enters the new one.
     """
 
+    locomotion_type = LocomotionState
+
     def __init__(
         self,
         mode_runtimes: tuple[LocomotionModeRuntime, ...],
@@ -81,14 +83,14 @@ class StateMachine:
         self.style_modes = tuple(name for name in modes_by_name if name not in core_names)
         standing_names = (LINEAR_LOCOMOTION_MODE, DIRECTIONAL_LOCOMOTION_MODE, *self.style_modes)
         self.standing_idle_state = IdleState("Idle", standing_idle_clips)
-        self.standing_locomotion_state = LocomotionState(
+        self.standing_locomotion_state = self.locomotion_type(
             "Locomotion",
             tuple(modes_by_name[name] for name in standing_names),
             initial_mode if initial_mode != CROUCH_LOCOMOTION_MODE else LINEAR_LOCOMOTION_MODE,
             pose,
         )
         self.crouching_idle_state = IdleState("Crouching Idle", crouching_idle_clips)
-        self.crouching_locomotion_state = LocomotionState(
+        self.crouching_locomotion_state = self.locomotion_type(
             "Crouching Locomotion",
             (modes_by_name[CROUCH_LOCOMOTION_MODE],),
             CROUCH_LOCOMOTION_MODE,
