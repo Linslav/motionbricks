@@ -34,7 +34,7 @@ Things to try:
 
 - Walk into each object. With **Auto Interact** on, the character jumps, vaults, ducks under the bar, or sits on the box as it arrives.
 - Approach the same object from other angles and at other speeds. Pivots turn and slide each sequence toward the approach. The jumps and the bar pick their variation by speed.
-- While seated, press **I** (**X** on a controller) to stand up.
+- While seated, press a movement key or move the left stick to stand. Keep it held to walk away. If you held a direction while approaching the seat, release it first. **I** (**X** on a controller) also stands you up.
 - Turn off **Auto Interact** in the **Scene** section, then press **I** (**X** on a controller) near an object to start its interaction by hand.
 - Switch to Crouching with **P** (**B** on a controller) and walk under the bar. Its raised interaction box only catches a standing character, so no interaction starts.
 - Switch to Strafing with **O** (**Y** on a controller), or cycle through the style modes with **[** (**A** on a controller).
@@ -278,7 +278,7 @@ The bundled avoidance document in the gym scenes has a Walk and a Jog sequence. 
 
 ![VelocityMatchingSequenceBehavior picks the Walk or Jog sequence by speed](media/velocity_matching_flow.png)
 
-`SittingBehavior` plays the Sit sequence, then loops a sitting clip until the next press. The Stand sequence then generates the motion back to standing:
+`SittingBehavior` plays the Sit sequence, then loops a sitting clip until movement or a manual interaction requests the Stand sequence:
 
 ![SOMA sits down, holds, stands up, and walks off](media/sit_hold_soma.gif)
 *SOMA sits down, holds, stands up, and walks off*

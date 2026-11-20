@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
+
 from dataclasses import dataclass
 from functools import partial
 import math
@@ -56,7 +58,7 @@ from .runtime.common.io.scene_document import (
 )
 from .utils.cli import add_model_precision_argument, configure_logging, create_gl_parser
 from .utils.file_dialog import choose_file
-from .utils.model_loading import create_engine, require_tensorrt
+from .utils.model_loading import create_engine, require_inference_backend
 from .utils.input import InputManager, LocomotionModeInput, camera_relative_movement
 from .runtime.soma.character import SOMACharacter
 from .runtime.unitree_g1.character import UnitreeG1Character
@@ -65,6 +67,7 @@ _CHARACTER_TYPES = {ModelRig.SOMA: SOMACharacter, ModelRig.UNITREE_G1: UnitreeG1
 from .runtime.common.motion import LocomotionCommand, ground_direction
 from .runtime.common.state_machine import StateMachine
 from .runtime.common.smart_primitive_behaviors import (
+    SittingBehavior,
     SmartPrimitiveBehavior,
     behavior_types,
 )
@@ -395,7 +398,7 @@ class ScenePreview:
         asset_pool: SmartPrimitiveAssetPool,
     ) -> None:
         self._use_rig(assets)
-        with wp.ScopedStream(self._engine.stream):
+        with wp.ScopedStream(self._engine.stream) if self._engine.stream is not None else nullcontext():
             session = self._create_scene_session(path, scene, asset_pool)
             self._activate_scene_session(session)
 
@@ -684,6 +687,7 @@ class ScenePreview:
             session.character, instance.runtime,
         )
         self._active_interaction = instance
+        self._approach_movement_held = session.character.movement.input_speed > 0.0
 
     def _dispatch_interaction_input(self) -> None:
         """Handle the interaction button, I or the controller's X button.
@@ -705,7 +709,13 @@ class ScenePreview:
                 self._auto_interaction_blocked.discard(instance.definition.id)
 
         if machine.is_interacting:
-            if pressed:
+            stand_on_movement = False
+            if isinstance(machine.interaction_state.primitive, SittingBehavior):
+                moving = session.character.movement.input_speed > 0.0
+                if not moving:
+                    self._approach_movement_held = False
+                stand_on_movement = moving and not self._approach_movement_held and machine.interaction_state.is_looping
+            if pressed or stand_on_movement:
                 machine.interact()
         else:
             instance = self._nearest_interactable
@@ -1071,14 +1081,14 @@ class ScenePreview:
                 # Loading can build another engine and switch streams, so it
                 # runs between frames, outside the active engine's stream.
                 self._load_pending_scene()
-                with wp.ScopedStream(self._scene_session.character.engine.stream):
+                with wp.ScopedStream(self._scene_session.character.engine.stream) if self._scene_session.character.engine.stream is not None else nullcontext():
                     self.step()
                     self.render()
                 frame += 1
         finally:
             session = self._scene_session
             if session.state_machine.is_interacting:
-                with wp.ScopedStream(session.character.engine.stream):
+                with wp.ScopedStream(session.character.engine.stream) if session.character.engine.stream is not None else nullcontext():
                     session.state_machine.interaction_state.exit(
                         session.character, session.state_machine,
                     )
@@ -1100,7 +1110,7 @@ def main() -> None:
     )
     viewer, args = newton.examples.init(parser)
     configure_logging(args)
-    require_tensorrt()
+    require_inference_backend()
     ScenePreview(viewer, args.scene, fp16=args.model_precision == "fp16").run(
         args.num_frames if args.test else None
     )

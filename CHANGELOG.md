@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Stand up from the seat with movement input** — Press a movement key or move the controller stick to get up, then keep moving to walk away.
+
 ## [0.2.0] - 2026-10-23
 
 - MotionBricks moves to its own repository. It started as a Unitree G1 preview in
