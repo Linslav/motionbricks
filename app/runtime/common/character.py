@@ -66,6 +66,7 @@ class BaseCharacter(ABC):
     pose IK also supplies an IK corrector.
     """
 
+    state_machine_type = StateMachine
     root_forward_axis: wp.vec3
     target_pose_blender: BaseTargetPoseBlender
 
@@ -133,7 +134,7 @@ class BaseCharacter(ABC):
             dtype=InteractionBox,
             device=engine.device,
         )
-        self.state_machine = StateMachine(
+        self.state_machine = self.state_machine_type(
             tuple(load_locomotion_mode(mode, asset_pool) for mode in modes),
             initial_mode,
             standing_idle_clips=tuple(self.load_clip(path, loop=True) for path in idle_paths),

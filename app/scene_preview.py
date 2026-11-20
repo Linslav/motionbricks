@@ -61,10 +61,11 @@ from .utils.file_dialog import choose_file
 from .utils.model_loading import create_engine, require_inference_backend
 from .utils.input import InputManager, LocomotionModeInput, camera_relative_movement
 from .runtime.soma.character import SOMACharacter
+from .runtime.soma.gym_character import GymCharacter
 from .runtime.unitree_g1.character import UnitreeG1Character
 
 _CHARACTER_TYPES = {ModelRig.SOMA: SOMACharacter, ModelRig.UNITREE_G1: UnitreeG1Character}
-from .runtime.common.motion import LocomotionCommand, ground_direction
+from .runtime.common.motion import CROUCH_LOCOMOTION_MODE, LocomotionCommand, ground_direction
 from .runtime.common.state_machine import StateMachine
 from .runtime.common.smart_primitive_behaviors import (
     SittingBehavior,
@@ -292,6 +293,7 @@ class ScenePreview:
         scene_path: str | Path,
         *,
         fp16: bool = False,
+        reference: bool = False,
     ) -> None:
         """Open Scene Preview on a graphical viewer and load the scene at scene_path.
 
@@ -319,6 +321,9 @@ class ScenePreview:
         self.show_scene_object_interaction_boxes = True
         self.auto_interaction = True
         self.fp16 = fp16
+        self.reference = reference
+        self._pressed_keys = set()
+        self._held_keys = set()
 
         self.context_colors = wp.array(
             [_CONTEXT_COLOR] * MODEL_POSES_PER_TOKEN,
@@ -345,7 +350,11 @@ class ScenePreview:
         self.viewer.camera_speed = 0.0
         self.viewer.vsync = False
         self.viewer.renderer.set_title("MotionBricks - Scene Preview")
+        from pyglet.window import key
+        self._space_key = key.SPACE
         self._input = InputManager.from_pyglet(self.viewer.is_key_down)
+        self.viewer.renderer.window.push_handlers(on_key_press=self._key_press, on_key_release=self._key_release,
+                                                  on_deactivate=self._clear_keys)
         try:
             self.load_scene(scene_path)
         except BaseException:
@@ -354,9 +363,25 @@ class ScenePreview:
         # The camera follows the character, so wait for the first scene.
         self.viewer.renderer.register_mouse_drag(self._on_mouse_drag)
 
+    def _key_press(self, symbol, modifiers):
+        if symbol not in self._held_keys:
+            self._pressed_keys.add(symbol)
+        self._held_keys.add(symbol)
+        if self._input.gym_controls and symbol == self._space_key:
+            return True  # Space belongs to the player. Consume the viewer pause shortcut.
+
+    def _key_release(self, symbol, modifiers):
+        self._held_keys.discard(symbol)
+
+    def _clear_keys(self):
+        self._pressed_keys.clear()
+        self._held_keys.clear()
+
     def close(self) -> None:
         """Release the input devices and the engine."""
 
+        self.viewer.renderer.window.remove_handlers(on_key_press=self._key_press, on_key_release=self._key_release,
+                                                    on_deactivate=self._clear_keys)
         self._input.close()
         if self._engine is not None:
             self._engine.close()
@@ -423,7 +448,10 @@ class ScenePreview:
         engine = self._engine
         assets = self._rig_assets
         start = scene.character_start.transform
-        character = _CHARACTER_TYPES[scene.rig](engine, asset_pool=asset_pool, initial_transform=start)
+        if not self.reference and path == _DEFAULT_SCENE.resolve() and scene.rig is ModelRig.SOMA:
+            character = GymCharacter(engine, scene=scene, asset_pool=asset_pool, initial_transform=start)
+        else:
+            character = _CHARACTER_TYPES[scene.rig](engine, asset_pool=asset_pool, initial_transform=start)
         character_color = CHARACTER_COLORS[scene.rig]
         mesh_renderer = create_mesh_renderer(scene.rig, assets.model)
         skeleton_renderer = partial(create_skeleton_renderer, scene.rig, assets.model)
@@ -499,10 +527,14 @@ class ScenePreview:
         self.viewer.set_world_offsets([0, 0, 0])
 
         self._scene_session = session
+        self._input.gym_controls = isinstance(session.character, GymCharacter)
+        self._gamepad_action_held = False
 
         self.time = 0.0
         self._mode_input = LocomotionModeInput(session.state_machine.style_modes)
         self._interaction_down = False
+        self._deferred_mode = None
+        self._pressed_keys.clear()
         self._active_interaction = None
         self._auto_interaction_blocked: set[int] = set()
         self.camera_facing = session.character.movement.current_facing.copy()
@@ -629,7 +661,19 @@ class ScenePreview:
 
     def _requested_locomotion_mode(self) -> str | None:
         locomotion = self._scene_session.state_machine.active_locomotion_state
-        return self._mode_input.poll(self._input, locomotion.active_mode.name)
+        current = locomotion.active_mode.name
+        requested = self._mode_input.poll(self._input, self._deferred_mode or current)
+        character = self._scene_session.character
+        if not isinstance(character, GymCharacter):
+            return requested
+        requested = requested or self._deferred_mode
+        self._deferred_mode = None
+        if current == CROUCH_LOCOMOTION_MODE and requested and requested != current:
+            motor = character.motor
+            if not motor.clear(*motor.position, motor.standing_height):
+                self._deferred_mode = requested
+                return None
+        return requested
 
     def _interaction_pressed(self) -> bool:
         down = self._input.is_interaction_down()
@@ -699,6 +743,16 @@ class ScenePreview:
         session = self._scene_session
         machine = session.state_machine
         pressed = self._interaction_pressed()
+        gym = isinstance(session.character, GymCharacter)
+        if gym:
+            from pyglet.window import key
+            button = self._input.is_controller_button_down("x")
+            space = key.SPACE in self._pressed_keys or (button and not self._gamepad_action_held)
+            self._gamepad_action_held = button
+            if key.E in self._pressed_keys:
+                session.character.toggle_prop()
+            # I remains available to stand up. Only Space initiates gym actions.
+            pressed = space or (pressed and machine.is_interacting)
 
         if self._active_interaction is not None and not machine.is_interacting:
             finished = self._active_interaction
@@ -719,6 +773,26 @@ class ScenePreview:
                 machine.interact()
         else:
             instance = self._nearest_interactable
+            if gym:
+                character = session.character
+                if not pressed:
+                    return
+                # A stationary or crouched player can be touching the object
+                # without its forward-facing probe overlapping its trigger.
+                nearby = [
+                    item for item in session.smart_primitives
+                    if item.definition.reference.name != "avoidance.smart_primitive.json"
+                    and item.distance_squared_to(character.motor.position) <= 1.65 ** 2
+                ]
+                if (instance is not None and instance.definition.reference.name != "avoidance.smart_primitive.json"
+                        and instance.distance_squared_to(character.motor.position) <= 2.4 ** 2):
+                    nearby.append(instance)
+                instance = min(nearby, key=lambda item: item.distance_squared_to(character.motor.position), default=None)
+                if instance is not None and character.motor.grounded:
+                    self._start_smart_primitive_interaction(instance)
+                else:
+                    character.motor.jump(character.jump_held)
+                return
             if instance is not None and (
                 pressed or (
                     self.auto_interaction
@@ -727,7 +801,7 @@ class ScenePreview:
             ):
                 self._start_smart_primitive_interaction(instance)
 
-    def step(self) -> None:
+    def step(self, delta_time: float | None = None) -> None:
         """Read input, then advance the character and the camera.
 
         Each step covers the time since the last frame.
@@ -735,6 +809,8 @@ class ScenePreview:
         session = self._scene_session
         frame_time = time.perf_counter()
         frame_dt = min(max(frame_time - self._last_frame_time, _MIN_FRAME_SECONDS), _MAX_FRAME_SECONDS)
+        if delta_time is not None:
+            frame_dt = delta_time
         self._last_frame_time = frame_time
         self.time += frame_dt
 
@@ -747,12 +823,15 @@ class ScenePreview:
             use_max_speed=input_frame.use_max_speed,
             requested_mode=self._requested_locomotion_mode(),
         )
+        if isinstance(session.character, GymCharacter):
+            session.character.jump_held = self._space_key in self._held_keys or self._input.is_controller_button_down("x")
         session.character.step(frame_dt, command)
         self._follow_character(frame_dt)
         self._update_camera()
 
         self._update_smart_primitive_interaction()
         self._dispatch_interaction_input()
+        self._pressed_keys.clear()
 
         if self.show_blendspace_targets and session.state_machine.is_locomoting:
             session.state_machine.active_locomotion_state.evaluate_current_target_poses(
@@ -959,10 +1038,13 @@ class ScenePreview:
             ui.same_line()
             if ui.button("...##LoadScene"):
                 self._request_scene_load()
-            _, self.auto_interaction = ui.checkbox(
-                "Auto Interact",
-                self.auto_interaction,
-            )
+            if isinstance(session.character, GymCharacter):
+                ui.text_wrapped("Shift: run   Ctrl: crouch   Space: jump / vault / sit")
+                ui.text_wrapped("E: pick up / drop the orange baton")
+                if session.character.carrying:
+                    ui.text("Carrying baton")
+            else:
+                _, self.auto_interaction = ui.checkbox("Auto Interact", self.auto_interaction)
             if self.scene_error is not None:
                 # The same red as the editors' error status.
                 ui.push_style_color(ui.Col_.text, ui.ImVec4(1.0, 0.35, 0.35, 1.0))
@@ -1108,10 +1190,11 @@ def main() -> None:
         default=_DEFAULT_SCENE,
         help="Scene document to open. Its rig selects SOMA or Unitree G1.",
     )
+    parser.add_argument("--reference", action="store_true", help="Use the original generated locomotion and interaction controls.")
     viewer, args = newton.examples.init(parser)
     configure_logging(args)
     require_inference_backend()
-    ScenePreview(viewer, args.scene, fp16=args.model_precision == "fp16").run(
+    ScenePreview(viewer, args.scene, fp16=args.model_precision == "fp16", reference=args.reference).run(
         args.num_frames if args.test else None
     )
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Add responsive traversal and manual actions to the SOMA gym** — Sprint reversals respond within two replay frames. Space jumps, vaults or sits. The course adds solid obstacles, ramps, a landing block, a hand-carried baton, and recordable keyboard trials.
+
 - **Tighten locomotion and add held sprint and crouch controls** — Movement targets respond on the first step, turns settle sooner, and stops take less space. Hold Shift to run and Control to crouch.
 
 - **Stand up from the seat with movement input** — Press a movement key or move the controller stick to get up, then keep moving to walk away.
