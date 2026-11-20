@@ -144,7 +144,8 @@ class LocomotionState(State):
         character,
         state_machine: StateMachine,
     ) -> None:
-        character.movement.realign(character.actual_velocity, self.active_mode)
+        # The recorded poses supply momentum. Aim the first generated step at the input.
+        character.movement.realign(character.movement.input_velocity, self.active_mode)
         self._generate(character)
 
     def update(

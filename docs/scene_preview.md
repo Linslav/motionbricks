@@ -46,9 +46,10 @@ Things to try:
 | Action | Keyboard and mouse | Controller |
 | --- | --- | --- |
 | Move forward, left, backward, or right | **W**, **A**, **S**, and **D**, or the **arrow keys** | Left stick or D-pad |
-| Run | Hold **Space** while moving | Push the left stick further |
+| Run | Hold **Shift** or **Space** while moving | Push the left stick further |
 | Interact manually, or stand up after sitting | **I** | **X** |
 | Switch between the Forward and Strafing modes | **O** | **Y** |
+| Crouch temporarily | Hold **Control**, then release to resume the selected mode | — |
 | Switch between the Crouching and Strafing modes | **P** | **B** |
 | Cycle through the style modes, such as Skipping and Zombie | **[** | **A** |
 | Orbit the camera around the character | Drag with the **middle mouse button** | Right stick |
@@ -143,7 +144,7 @@ Each frame, `StateMachine.update()` switches the mode when the command asks for 
 Idle plays looping clips, and the model generates the way in:
 
 1. Choose one of the rig's idle clips at random, other than the current one.
-2. Place the clip one second ahead of the character along its actual velocity. Turn it to the facing of the last movement input.
+2. Place the clip 0.18 seconds ahead along the current velocity to leave room for a braking step. Turn it to the facing of the last movement input.
 3. Sample the clip's first four poses at 30 Hz into the target token. Generate a transition toward these poses.
 4. When the transition ends, play the clip in a loop.
 

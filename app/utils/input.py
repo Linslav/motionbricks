@@ -117,20 +117,27 @@ class InputManager:
     def from_pyglet(cls, is_key_down: Callable[[str | int], bool]) -> InputManager:
         """Set up keyboard input and optional controller support.
 
-        The viewer reads letters, digits, and arrow keys by name. [ goes through its pyglet
-        key code.
+        Use pyglet key codes for punctuation and right-hand modifiers.
         """
 
         from pyglet.window import key
 
-        key_codes = {"[": key.BRACKETLEFT}
+        key_codes = {
+            "[": (key.BRACKETLEFT,),
+            "shift": (key.LSHIFT, key.RSHIFT),
+            "ctrl": (key.LCTRL, key.RCTRL),
+        }
+
+        def held(name: str) -> bool:
+            return any(is_key_down(code) for code in key_codes.get(name, (name,)))
+
         try:
             from pyglet.input import ControllerManager
 
             controller_manager = ControllerManager()
         except Exception:
             controller_manager = None
-        return cls(lambda name: is_key_down(key_codes.get(name, name)), controller_manager)
+        return cls(held, controller_manager)
 
     def is_key_down(self, key: str) -> bool:
         """Return whether a keyboard key is currently held."""
@@ -165,13 +172,11 @@ class InputManager:
         else:
             movement = controller_movement
 
+        sprint = self.is_key_down("shift") or self.is_key_down("space")
         return InputFrame(
             movement=movement,
             camera_orbit=self._controller_camera_orbit(),
-            use_max_speed=(
-                controller_movement != _ZERO_AXES
-                or self.is_key_down("space")
-            ),
+            use_max_speed=controller_movement != _ZERO_AXES or (sprint and not self.is_key_down("ctrl")),
         )
 
     def close(self) -> None:
@@ -266,10 +271,13 @@ class LocomotionModeInput:
         """Track the toggles. style_modes names the style modes in the order [ cycles them."""
         self._style_modes = style_modes
         self._last_style = style_modes[0] if style_modes else None
+        self._mode_before_crouch: str | None = None
         self._held = dict.fromkeys([key for key, *_ in _MODE_TOGGLES] + [_STYLE_KEY], False)
 
     def poll(self, input_manager: InputManager, current_mode: str) -> str | None:
-        """Return the mode that a newly pressed toggle asks for, or None."""
+        """Track the selected mode beneath the temporary Control-key crouch."""
+        active_mode = current_mode
+        current_mode = self._mode_before_crouch or current_mode
         if current_mode in self._style_modes:
             self._last_style = current_mode
         requested_mode = None
@@ -278,7 +286,13 @@ class LocomotionModeInput:
                 requested_mode = second_mode if current_mode == first_mode else first_mode
         if self._pressed(input_manager, _STYLE_KEY, _STYLE_BUTTON) and self._style_modes:
             requested_mode = self._next_style(current_mode)
-        return requested_mode
+        selected_mode = requested_mode or current_mode
+        if input_manager.is_key_down("ctrl"):
+            self._mode_before_crouch = selected_mode
+            selected_mode = CROUCH_LOCOMOTION_MODE
+        else:
+            self._mode_before_crouch = None
+        return selected_mode if selected_mode != active_mode else None
 
     def _pressed(self, input_manager: InputManager, key: str, button: str) -> bool:
         """Return whether the key or its button went down since the last poll."""

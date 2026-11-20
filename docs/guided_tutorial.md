@@ -583,9 +583,10 @@ Use the following controls to move the character and orbit the camera:
 | Action | Keyboard and mouse | Controller |
 | --- | --- | --- |
 | Move forward, left, backward, or right | **W**, **A**, **S**, and **D**, or the **arrow keys** | Left stick or D-pad |
-| Run | Hold **Space** while moving | Push the left stick further |
+| Run | Hold **Shift** or **Space** while moving | Push the left stick further |
 | Interact manually, or stand up after sitting | **I** | **X** |
 | Switch between the Forward and Strafing modes | **O** | **Y** |
+| Crouch temporarily | Hold **Control**, then release to resume the selected mode | — |
 | Switch between the Crouching and Strafing modes | **P** | **B** |
 | Cycle through the style modes, such as Skipping and Zombie | **[** | **A** |
 | Orbit the camera around the character | Drag with the **middle mouse button** | Right stick |
