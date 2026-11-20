@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from .target_pose_blender import BaseTargetPoseBlender
 
 
+_STOP_LOOKAHEAD_SECONDS = 0.18
 _CLIP_TRANSITION_INFERENCE_PARAMS = TargetPoseInferenceParams(
     transition_early_by_frames=0,
     num_poses_to_use=MODEL_POSES_PER_TOKEN,
@@ -265,7 +266,7 @@ class BaseCharacter(ABC):
         """Place a clip ahead of the character and generate motion to its first frame."""
 
         self._current_clip = clip
-        clip_ground_position = self.character_ground_position + self.actual_velocity
+        clip_ground_position = self.character_ground_position + self.actual_velocity * _STOP_LOOKAHEAD_SECONDS
         self._align_clip(
             clip,
             clip_ground_position,

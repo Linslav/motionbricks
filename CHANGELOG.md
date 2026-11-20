@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Tighten locomotion and add held sprint and crouch controls** — Movement targets respond on the first step, turns settle sooner, and stops take less space. Hold Shift to run and Control to crouch.
+
 - **Stand up from the seat with movement input** — Press a movement key or move the controller stick to get up, then keep moving to walk away.
 
 ## [0.2.0] - 2026-10-23

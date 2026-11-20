@@ -77,10 +77,10 @@ class LocomotionCommand:
 class LocomotionSettings:
     """How quickly movement responds to input and when to generate new motion."""
 
-    facing_halflife: float = 0.15
-    velocity_direction_halflife: float = 0.2
-    speed_acceleration_halflife: float = 0.6
-    speed_deceleration_halflife: float = 0.4
+    facing_halflife: float = 0.055
+    velocity_direction_halflife: float = 0.065
+    speed_acceleration_halflife: float = 0.10
+    speed_deceleration_halflife: float = 0.075
     speed_regeneration_fraction: float = 0.3
     minimum_speed_regeneration_fraction: float = 0.1
     direction_regeneration_dot: float = 0.92
@@ -377,7 +377,7 @@ class MovementControl:
         self._smooth(mode, delta_time)
 
     def realign(self, velocity: np.ndarray, mode: LocomotionMode) -> None:
-        """Resume locomotion from the character's actual velocity. The input stays as it is."""
+        """Set the initial locomotion target velocity and clear the spring rates."""
         speed = float(np.linalg.norm(velocity[:2]))
         direction = ground_direction(velocity, self.current_facing)
         angle = math.atan2(direction[1], direction[0])

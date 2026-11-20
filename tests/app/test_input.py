@@ -169,6 +169,26 @@ class InputTests(unittest.TestCase):
 
 
 class LocomotionModeInputTests(unittest.TestCase):
+    def test_sprint_and_crouch_follow_held_keys_and_restore_the_selected_mode(self):
+        keys = {"w"}
+        inputs = InputManager(keys.__contains__)
+        selector = LocomotionModeInput(("skipping_1d",))
+        current = "skipping_1d"
+        for held, expected_mode, sprint in (
+            ({"shift"}, "skipping_1d", True),
+            ({"shift", "ctrl"}, CROUCH_LOCOMOTION_MODE, False),
+            ({"ctrl"}, CROUCH_LOCOMOTION_MODE, False),
+            (set(), "skipping_1d", False),
+            ({"p"}, CROUCH_LOCOMOTION_MODE, False),
+            ({"ctrl"}, CROUCH_LOCOMOTION_MODE, False),
+            (set(), CROUCH_LOCOMOTION_MODE, False),
+        ):
+            keys.clear()
+            keys.update(held | {"w"})
+            current = selector.poll(inputs, current) or current
+            self.assertEqual(current, expected_mode)
+            self.assertEqual(inputs.poll().use_max_speed, sprint)
+
     def test_keys_toggle_modes_like_their_buttons_once_per_press(self):
         held_keys = set()
         controller = _Controller()
