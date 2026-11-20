@@ -67,6 +67,7 @@ _CHARACTER_TYPES = {ModelRig.SOMA: SOMACharacter, ModelRig.UNITREE_G1: UnitreeG1
 from .runtime.common.motion import LocomotionCommand, ground_direction
 from .runtime.common.state_machine import StateMachine
 from .runtime.common.smart_primitive_behaviors import (
+    SittingBehavior,
     SmartPrimitiveBehavior,
     behavior_types,
 )
@@ -686,6 +687,7 @@ class ScenePreview:
             session.character, instance.runtime,
         )
         self._active_interaction = instance
+        self._approach_movement_held = session.character.movement.input_speed > 0.0
 
     def _dispatch_interaction_input(self) -> None:
         """Handle the interaction button, I or the controller's X button.
@@ -707,7 +709,13 @@ class ScenePreview:
                 self._auto_interaction_blocked.discard(instance.definition.id)
 
         if machine.is_interacting:
-            if pressed:
+            stand_on_movement = False
+            if isinstance(machine.interaction_state.primitive, SittingBehavior):
+                moving = session.character.movement.input_speed > 0.0
+                if not moving:
+                    self._approach_movement_held = False
+                stand_on_movement = moving and not self._approach_movement_held and machine.interaction_state.is_looping
+            if pressed or stand_on_movement:
                 machine.interact()
         else:
             instance = self._nearest_interactable

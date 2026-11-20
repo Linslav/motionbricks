@@ -22,7 +22,7 @@ class RealMetalViewerTests(unittest.TestCase):
     def test_real_demos(self):
         # Newton's GL viewer closes pyglet's process-wide event loop. Each app
         # normally runs in its own process, so exercise them the same way here.
-        for case in ("_exercise_inbetweener", "_exercise_scene_preview"):
+        for case in ("_exercise_inbetweener", "_exercise_scene_preview", "_exercise_seat_movement"):
             with self.subTest(app=case):
                 result = subprocess.run(
                     [sys.executable, "-m", "unittest", f"tests.app.test_real_mps_viewer.RealMetalViewerTests.{case}", "-v"],
@@ -63,6 +63,55 @@ class RealMetalViewerTests(unittest.TestCase):
             finally:
                 if demo is not None and demo.engine is not None:
                     demo.engine.close()
+                viewer.close()
+
+    def _exercise_seat_movement(self):
+        import newton.examples
+
+        from app.runtime.common.smart_primitive_behaviors import SittingBehavior
+        from app.scene_preview import ScenePreview
+        from app.utils.cli import create_gl_parser
+        from app.utils.input import InputManager
+
+        gym = Path(__file__).resolve().parents[2] / "assets/scenes/soma_gym.scene.json"
+        keys = {"w"}
+        with wp.ScopedDevice("cpu"), patch.dict(os.environ, {"MOTIONBRICKS_ONNX_PROVIDER": "mps"}), \
+             patch.object(sys, "argv", ["motionbricks-viewer-test"]):
+            viewer, _ = newton.examples.init(create_gl_parser())
+            preview = ScenePreview(viewer, gym)
+            session = preview._scene_session
+            machine = session.state_machine
+            seat = next(item for item in session.smart_primitives if isinstance(item.runtime, SittingBehavior))
+
+            def tick():
+                preview._last_frame_time -= 0.1
+                preview.step()
+                preview.render()
+
+            try:
+                with patch.object(preview, "_input", InputManager(keys.__contains__)):
+                    tick()
+                    preview._start_smart_primitive_interaction(seat)
+                    for _ in range(120):
+                        tick()
+                        if machine.interaction_state.is_looping:
+                            break
+                    tick()
+                    self.assertTrue(machine.interaction_state.is_looping)
+                    keys.clear()
+                    tick()
+                    self.assertTrue(machine.interaction_state.is_looping)
+                    keys.add("left")
+                    tick()
+                    self.assertFalse(machine.interaction_state.is_looping)
+                    self.assertTrue(machine.is_interacting)
+                    for _ in range(120):
+                        tick()
+                        if machine.is_locomoting:
+                            break
+                    self.assertTrue(machine.is_locomoting)
+            finally:
+                preview.close()
                 viewer.close()
 
     def _exercise_scene_preview(self):
